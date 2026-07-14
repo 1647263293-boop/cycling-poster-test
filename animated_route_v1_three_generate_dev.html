@@ -1,0 +1,883 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="老崔">
+  <meta name="copyright" content="© 2026 老崔">
+  <meta name="release-channel" content="RC1.2-mobile-protected">
+  <meta name="release-protection" content="terser-minified-no-sourcemap">
+<title>动态路线素材制作 V1</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f14;
+      --panel: rgba(17, 24, 33, 0.94);
+      --panel-border: rgba(255,255,255,0.08);
+      --text: rgba(244,247,250,0.96);
+      --muted: rgba(214,223,234,0.72);
+      --accent: #ff9b4a;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background:
+        radial-gradient(circle at top, rgba(60, 88, 122, 0.24), transparent 34%),
+        linear-gradient(180deg, #0f141b 0%, #090c11 100%);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    body {
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .app {
+      width: min(100%, 1380px);
+      height: calc(100vh - 40px);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .preview-shell {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+    }
+
+    .preview-header {
+      padding: 6px 4px 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: flex-start;
+    }
+
+    .preview-header h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.15;
+    }
+
+    .preview-header-copy {
+      min-width: 0;
+    }
+
+    .page-header-actions {
+      position: absolute;
+      top: 6px;
+      right: 4px;
+      z-index: 6;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .page-navigation-button {
+      width: auto;
+      flex: 0 0 auto;
+      min-height: 46px;
+      padding: 0 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 140, 60, 0.45);
+      background: rgba(255, 255, 255, 0.04);
+      color: rgba(255, 235, 210, 0.95);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .page-navigation-button:hover {
+      background: rgba(255, 160, 86, 0.08);
+      border-color: rgba(255, 178, 102, 0.7);
+      transform: translateY(-1px);
+    }
+
+    .page-navigation-button:focus-visible {
+      outline: 2px solid rgba(255, 184, 112, 0.65);
+      outline-offset: 3px;
+    }
+
+    .page-navigation-button[aria-disabled="true"] {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+
+    .preview-header p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.65;
+      max-width: 840px;
+    }
+
+    .dev-diagnostic-only {
+      display: none !important;
+    }
+
+    .preview-header > p,
+    #previewModeMeta {
+      display: none !important;
+    }
+
+    .controls .section:has(#routePointCount),
+    .controls .section:has(#sourceFileName),
+    .controls .section:has(#bridgeSchemaVersion) {
+      display: none !important;
+    }
+
+    .button-row a.button-link[href="./route_card_v1_visual_bridge_dev.html?restoreTempProject=1"] {
+      display: none !important;
+    }
+
+    .visually-hidden-status {
+      position: fixed !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
+    .preview-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .canvas-frame {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      padding: 22px;
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 28px 70px rgba(0,0,0,0.42);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      background:
+        linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255,255,255,0.05) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.05) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.05) 75%),
+        linear-gradient(180deg, rgba(18,24,31,0.98), rgba(9,13,18,0.98));
+      background-size: 28px 28px;
+      background-position: 0 0, 0 14px, 14px -14px, -14px 0;
+    }
+
+    .preview-stage {
+      position: relative;
+      flex: 0 0 auto;
+      width: 520px;
+      height: 924px;
+      aspect-ratio: 1080 / 1920;
+      border-radius: 22px;
+      max-width: 100%;
+      max-height: 100%;
+      overflow: hidden;
+      transform-origin: top center;
+      background: rgba(0,0,0,0.24);
+    }
+
+    .photo-layer,
+    .three-layer,
+    .empty-state {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: auto;
+    }
+
+    .photo-layer {
+      object-fit: cover;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .three-layer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    #threeMount canvas {
+      position: absolute;
+      inset: 0;
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+
+    .empty-state {
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      text-align: center;
+    }
+
+    .empty-card {
+      width: min(100%, 440px);
+      padding: 28px 24px;
+      border-radius: 22px;
+      background: rgba(8,12,18,0.56);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .empty-card h2 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .empty-card p {
+      margin: 12px 0 0;
+      color: rgba(236,241,246,0.86);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .controls {
+      height: 100%;
+      padding: 18px;
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow: auto;
+    }
+
+    .section {
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .section h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .section-note {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 8px 10px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .kv dt { color: var(--muted); }
+    .kv dd { margin: 0; word-break: break-word; }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .loop-motion-control {
+      display: grid;
+      gap: 8px;
+      margin: 0 0 12px;
+    }
+
+    .loop-motion-control label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .loop-motion-control input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    button, a.button-link {
+      appearance: none;
+      border: 1px solid rgba(255, 155, 74, 0.35);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.2;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    button:hover, a.button-link:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255, 180, 92, 0.52);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status {
+      min-height: 48px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      color: rgba(244,247,250,0.9);
+      font-size: 13px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+    }
+
+    .video-export-section {
+      display: grid;
+      gap: 12px;
+    }
+
+    .video-export-button {
+      width: 100%;
+    }
+
+    .video-export-progress-wrap {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .video-export-progress-wrap[hidden] {
+      display: none !important;
+    }
+
+    .video-export-progress-wrap progress {
+      width: 100%;
+      height: 10px;
+      overflow: hidden;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+    }
+
+    .video-export-progress-wrap progress::-webkit-progress-bar {
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+    }
+
+    .video-export-progress-wrap progress::-webkit-progress-value {
+      background: linear-gradient(90deg, #ff9b4f, #ffd08a);
+      border-radius: 999px;
+    }
+
+    .video-export-progress-wrap span,
+    .video-export-message {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .video-export-message {
+      min-height: 1.55em;
+      margin: 0;
+    }
+
+    .video-export-message[data-error="1"] {
+      color: #ff9b9b;
+    }
+
+    .selected-action-description,
+    .preview-action-message {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .preview-action-message[data-error="1"] {
+      color: #ff8f72;
+    }
+
+    .preview-command-legacy {
+      display: none !important;
+    }
+
+    #playBtn.active,
+    #loopMotionTiltSwing.active,
+    #loopMotionRollSwing.active,
+    #loopCalloutFollowRoute.active,
+    #loopCalloutFixedBreath.active {
+      border-color: rgba(255, 180, 92, 0.72);
+      background: rgba(255, 148, 72, 0.16);
+      box-shadow: inset 0 0 0 1px rgba(255, 190, 112, 0.16);
+    }
+
+    .build {
+      margin-top: auto;
+      color: rgba(205,214,226,0.66);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .support-panel {
+      border: 1px solid rgba(255, 155, 74, 0.22);
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(24, 29, 38, 0.96), rgba(13, 17, 24, 0.96));
+      box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+    }
+
+    .support-panel--floating {
+      position: fixed;
+      left: 18px;
+      bottom: 18px;
+      z-index: 20;
+      width: 284px;
+      max-width: calc(100vw - 32px);
+    }
+
+    .support-panel__toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 0;
+      border-radius: 0;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .support-panel__arrow {
+      color: var(--accent);
+      font-size: 12px;
+    }
+
+    .support-panel__content {
+      padding: 12px 2px 14px;
+      max-height: 68vh;
+      overflow-y: auto;
+    }
+
+    .support-panel__intro {
+      margin: 0 10px 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .support-panel__qr-grid {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 24px;
+      width: 100%;
+    }
+
+    .support-panel__qr-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .support-panel__qr-title {
+      margin: 0 0 8px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .support-panel__qr-image-wrap {
+      width: min(240px, calc(100% - 12px));
+      margin: 0 auto;
+      padding: 10px;
+      box-sizing: border-box;
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .support-panel__qr-image {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      object-fit: contain;
+      opacity: 1;
+      filter: none;
+      transform: none;
+    }
+
+    .support-panel__qr-error {
+      min-height: 96px;
+      display: grid;
+      place-items: center;
+      color: #8a2b1f;
+      font-size: 12px;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .support-panel__qr-error[hidden] {
+      display: none !important;
+    }
+
+    .support-panel__caption {
+      margin: 8px 0 0;
+      color: rgba(244, 247, 250, 0.72);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 1180px) {
+      body { overflow: auto; }
+      .app {
+        height: auto;
+        grid-template-columns: 1fr;
+      }
+      .controls { min-height: 0; }
+      .preview-header {
+        flex-wrap: wrap;
+      }
+      .page-header-actions {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 767px) {
+      body {
+        overflow-x: hidden;
+        padding: 12px;
+      }
+
+      .preview-header {
+        width: 100%;
+        min-width: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 4px 0 0;
+      }
+
+      .preview-header h1 {
+        font-size: 1rem;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+
+      .preview-header p {
+        display: none;
+      }
+
+      .page-header-actions {
+        position: static;
+        width: 100%;
+        min-width: 0;
+        justify-content: stretch;
+      }
+
+      .page-navigation-button {
+        width: 100%;
+        min-height: 44px;
+        box-sizing: border-box;
+        text-align: center;
+        justify-content: center;
+        white-space: normal;
+      }
+    }
+    .release-copyright {
+      margin: 14px auto 0;
+      padding: 8px 6px 0;
+      color: rgba(216, 225, 235, 0.52);
+      font-size: 11px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="preview-shell">
+      <div class="preview-header">
+        <h1>动态路线素材制作 V1</h1>
+        <p>这是 Three.js 路线生成技术验证页。当前只验证路线按顺序生成，不做 HUD、标注、导出、循环展示和 routeImage/mask 裁切。</p>
+      </div>
+      <div class="page-header-actions">
+        <a
+          id="returnStaticBridgeLink"
+          class="page-navigation-button"
+          href="./route_card_v1_visual_bridge_dev.html?restoreTempProject=1"
+        >&#x4E0A;&#x4E00;&#x9875;&#x9759;&#x6001;&#x8DEF;&#x7EBF;&#x7D20;&#x6750;&#x5236;&#x4F5C;&#x2192;</a>
+      </div>
+      <div class="preview-meta">
+        <span id="previewCanvasMeta">预览画布 --</span>
+        <span id="previewModeMeta">Three.js ordered segment geometry</span>
+      </div>
+      <div class="canvas-frame" id="previewFrame">
+        <div class="preview-stage" id="previewStage">
+          <img id="photoLayer" class="photo-layer" alt="照片底图" />
+          <div id="threeMount" class="three-layer"></div>
+          <div id="emptyState" class="empty-state">
+            <div class="empty-card">
+              <h2>等待静态页状态</h2>
+              <p id="emptyStateText">没有读取到路线点，请先从静态页进入并保存当前工程。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="controls">
+      <section class="section">
+        <h2>Three.js 技术验证</h2>
+        <p class="section-note">只验证按 segment index 顺序生成的路线几何，不使用 routeImage，不使用 mask。</p>
+        <dl class="kv">
+          <dt>路线点</dt><dd id="routePointCount">--</dd>
+          <dt>渲染方式</dt><dd>ordered segment geometry</dd>
+          <dt>进度方式</dt><dd>segment index</dd>
+          <dt>routeImage</dt><dd>未使用</dd>
+          <dt>mask</dt><dd>未使用</dd>
+        </dl>
+      </section>
+
+      <section class="section">
+        <h2>来源工程</h2>
+        <dl class="kv">
+          <dt>文件名</dt><dd id="sourceFileName">--</dd>
+          <dt>画幅</dt><dd id="sourceCanvasPreset">--</dd>
+          <dt>保存时间</dt><dd id="sourceSavedAt">--</dd>
+          <dt>照片</dt><dd id="sourcePhotoStatus">--</dd>
+        </dl>
+      </section>
+
+      <section class="section">
+        <h2>Visual Spec Bridge</h2>
+        <dl class="kv">
+          <dt>schemaVersion</dt><dd id="bridgeSchemaVersion">--</dd>
+          <dt>canvasSpec</dt><dd id="bridgeCanvasSpec">--</dd>
+          <dt>photoSpec</dt><dd id="bridgePhotoSpec">--</dd>
+          <dt>routeGeometrySpec</dt><dd id="bridgeRouteGeometrySpec">--</dd>
+          <dt>routeVisualSpec</dt><dd id="bridgeRouteVisualSpec">--</dd>
+          <dt>routeRenderLayerSpec</dt><dd id="bridgeRouteRenderLayerSpec">--</dd>
+          <dt>hudSpec</dt><dd id="bridgeHudSpec">--</dd>
+          <dt>calloutSpec</dt><dd id="bridgeCalloutSpec">--</dd>
+          <dt>animationSpec</dt><dd id="bridgeAnimationSpec">--</dd>
+        </dl>
+      </section>
+
+      <section class="section">
+        <h2>路线生成</h2>
+        <p class="section-note">设置生成时长后，路线将从起点按顺序生成至终点。</p>
+        <div class="loop-motion-control">
+          <label for="routeGenerationDuration">
+            <span>生成时长</span>
+            <span id="routeGenerationDurationValue">4.0 s</span>
+          </label>
+          <input id="routeGenerationDuration" type="range" min="4" max="10" step="0.5" value="4">
+        </div>
+        <div class="button-row">
+          <button id="playBtn" type="button">路线生成</button>
+          <button id="replayBtn" class="preview-command-legacy" type="button">重播</button>
+          <a
+            class="button-link"
+            href="./route_card_v1_visual_bridge_dev.html?restoreTempProject=1"
+          >返回静态页</a>
+        </div>
+      </section>
+
+      <section class="section" id="loopMotionSection">
+        <h2>&#x5FAA;&#x73AF;&#x52A8;&#x4F5C; Loop Motion</h2>
+        <p class="section-note">
+          &#x8DEF;&#x7EBF;&#x5B8C;&#x6574;&#x663E;&#x793A;&#x540E;&#xFF0C;&#x53EF;&#x9009;&#x62E9;&#x4E00;&#x79CD;&#x5FAA;&#x73AF;&#x52A8;&#x4F5C;&#x8FDB;&#x884C;&#x9884;&#x89C8;&#x3002;&#x4E24;&#x79CD;&#x52A8;&#x4F5C;&#x4E92;&#x65A5;&#x3002;
+        </p>
+        <div class="button-row">
+          <button id="loopMotionTiltSwing" type="button">&#x524D;&#x540E;&#x4FEF;&#x4EF0;</button>
+          <button id="loopMotionRollSwing" type="button">Roll &#x65CB;&#x8F6C;</button>
+        </div>
+        <div class="loop-callout-mode">
+          <div class="control-label">&#x8DEF;&#x7EBF;&#x6807;&#x6CE8;</div>
+          <div class="button-row">
+            <button id="loopCalloutFollowRoute" type="button" aria-pressed="true">&#x6574;&#x4F53;&#x8DDF;&#x968F;</button>
+            <button id="loopCalloutFixedBreath" type="button" aria-pressed="false">&#x6587;&#x5B57;&#x56FA;&#x5B9A;&#x547C;&#x5438;</button>
+          </div>
+          <p class="section-note">
+            &#x6574;&#x4F53;&#x8DDF;&#x968F;&#xFF1A;&#x951A;&#x70B9;&#x3001;&#x5F15;&#x7EBF;&#x548C;&#x6587;&#x5B57;&#x968F;&#x8DEF;&#x7EBF;&#x4E00;&#x8D77;&#x8FD0;&#x52A8;&#x3002;
+            &#x6587;&#x5B57;&#x56FA;&#x5B9A;&#x547C;&#x5438;&#xFF1A;&#x951A;&#x70B9;&#x8D34;&#x7740;&#x8DEF;&#x7EBF;&#x8FD0;&#x52A8;&#xFF0C;&#x5F15;&#x7EBF;&#x5B9E;&#x65F6;&#x4F38;&#x7F29;&#xFF0C;&#x6587;&#x5B57;&#x4F4D;&#x7F6E;&#x56FA;&#x5B9A;&#x5E76;&#x8FDB;&#x884C;&#x900F;&#x660E;&#x5EA6;&#x547C;&#x5438;&#x3002;
+          </p>
+        </div>
+        <div class="loop-motion-control">
+          <label for="loopMotionAmplitude">
+            <span>&#x52A8;&#x4F5C;&#x5E45;&#x5EA6;</span>
+            <span id="loopMotionAmplitudeValue">5&#176;</span>
+          </label>
+          <input
+            id="loopMotionAmplitude"
+            type="range"
+            min="0"
+            max="15"
+            step="0.5"
+            value="5"
+          >
+        </div>
+        <div class="loop-motion-control">
+          <label for="loopMotionDuration">
+            <span>&#x5355;&#x6B21;&#x5FAA;&#x73AF;&#x65F6;&#x957F;</span>
+            <span id="loopMotionDurationValue">4.0 s</span>
+          </label>
+          <input
+            id="loopMotionDuration"
+            type="range"
+            min="2"
+            max="8"
+            step="0.5"
+            value="4"
+          >
+        </div>
+        <div class="loop-motion-control">
+          <label for="loopBreathBrightness">
+            <span>&#x6700;&#x6DF1;&#x5B9E;&#x4F53;&#x5EA6;</span>
+            <span id="loopBreathBrightnessValue">100%</span>
+          </label>
+          <input
+            id="loopBreathBrightness"
+            type="range"
+            min="50"
+            max="100"
+            step="1"
+            value="100"
+          >
+        </div>
+        <div class="loop-motion-control">
+          <label for="loopBreathOpacity">
+            <span>&#x6700;&#x6D45;&#x900F;&#x660E;&#x5EA6;</span>
+            <span id="loopBreathOpacityValue">45%</span>
+          </label>
+          <input
+            id="loopBreathOpacity"
+            type="range"
+            min="0"
+            max="95"
+            step="1"
+            value="45"
+          >
+        </div>
+        <div class="button-row preview-command-legacy">
+          <button id="loopMotionPlay" type="button">播放循环</button>
+          <button id="loopMotionPause" type="button">暂停</button>
+          <button id="loopMotionReset" type="button">恢复静态</button>
+        </div>
+      </section>
+
+      <section id="videoExportSection" class="section video-export-section">
+        <h2>导出视频</h2>
+        <p id="selectedActionDescription" class="selected-action-description"></p>
+        <button id="previewSelectedActionBtn" type="button" class="video-export-button" disabled>预览视频</button>
+        <p id="previewActionMessage" class="preview-action-message" aria-live="polite"></p>
+        <button id="exportVideoBtn" type="button" class="video-export-button" disabled>生成视频</button>
+        <div id="videoExportProgressWrap" class="video-export-progress-wrap" hidden>
+          <progress id="videoExportProgress" max="100" value="0"></progress>
+          <span id="videoExportProgressText">0%</span>
+        </div>
+        <p id="videoExportMessage" class="video-export-message" aria-live="polite"></p>
+      </section>
+
+      <div id="statusMessage" class="visually-hidden-status" aria-live="polite"></div>
+
+      <section class="support-panel support-panel--floating" data-support-panel>
+        <button class="support-panel__toggle" type="button" data-support-toggle aria-expanded="true">
+          <span>关注与支持</span>
+          <span class="support-panel__arrow" aria-hidden="true">▼</span>
+        </button>
+        <div class="support-panel__content" data-support-content>
+          <p class="support-panel__intro">关注工具动态，也可以支持工具继续开发。</p>
+          <div class="support-panel__qr-grid">
+            <div class="support-panel__qr-item">
+              <h3 class="support-panel__qr-title">抖音关注</h3>
+              <div class="support-panel__qr-image-wrap">
+                <img class="support-panel__qr-image" src="./assets/qr/douyin-follow.png" alt="抖音关注二维码" data-support-qr="douyin" draggable="false">
+              </div>
+              <div class="support-panel__qr-error" data-support-qr-error="douyin" hidden>二维码加载失败，请刷新页面。</div>
+              <p class="support-panel__caption">关注获取工具更新</p>
+            </div>
+            <div class="support-panel__qr-item">
+              <h3 class="support-panel__qr-title">微信赞赏</h3>
+              <div class="support-panel__qr-image-wrap">
+                <img class="support-panel__qr-image" src="./assets/qr/wechat-support.png" alt="微信收款二维码" data-support-qr="wechat" draggable="false">
+              </div>
+              <div class="support-panel__qr-error" data-support-qr-error="wechat" hidden>二维码加载失败，请刷新页面。</div>
+              <p class="support-panel__caption">各位老爷美女的赞赏，是我开发工具的动力。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="build">Build: 20260708_three_generate_dev_proof</div>
+    </aside>
+  </div>
+  <footer class="release-copyright">© 2026 老崔 · 骑行照片路线贴图生成器 · 未经授权，禁止复制、改名发布或用于商业服务。</footer>
+
+
+
+  <script src="./vendor-three.min.js"></script>
+  <script src="./dynamic-app.9a8c31a9.min.js?v=20260714_rc12_mobile_protected"></script>
+</body>
+</html>
+

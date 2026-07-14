@@ -1,0 +1,1508 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="老崔">
+  <meta name="copyright" content="© 2026 老崔">
+  <meta name="release-channel" content="RC1.2-mobile-protected">
+  <meta name="release-protection" content="terser-minified-no-sourcemap">
+<meta name="mobile-shell-build" content="20260714_m01_static_mobile_layout_shell_v1">
+  <meta name="mobile-preview-build" content="20260714_m02a_static_sticky_preview_v1">
+  <title>骑行照片路线贴图生成器 V1</title>
+  <link rel="stylesheet" href="./assets/fonts/montserrat/montserrat-local.css">
+  <style>
+    @font-face {
+      font-family: "PosterHandwrite";
+      src: url("./assets/fonts/MaShanZheng-Regular.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "PosterWenKai";
+      src: url("./assets/fonts/LXGWWenKai-Regular.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    :root {
+      color-scheme: dark;
+      --bg: #0d1117;
+      --panel: rgba(18, 24, 31, 0.94);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --text: rgba(243, 246, 250, 0.96);
+      --muted: rgba(216, 225, 235, 0.66);
+      --accent: #ff8a3d;
+      --accent-soft: #ffb36a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      min-height: 100%;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top, rgba(45, 64, 90, 0.24), transparent 36%),
+        linear-gradient(180deg, #10151b 0%, #090d12 100%);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    html,
+    body,
+    .app,
+    .preview-shell,
+    .controls,
+    .page-nav-slot,
+    .section,
+    .button-row,
+    .preset-row,
+    .chip-row,
+    button,
+    label {
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    input[type="range"],
+    input[type="checkbox"],
+    input[type="color"],
+    button {
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    input[type="range"] {
+      touch-action: none;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      -webkit-user-select: text;
+      user-select: text;
+      -webkit-touch-callout: default;
+    }
+
+    body {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 18px;
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .app-header {
+      width: min(100%, 1700px);
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .app-header-copy {
+      min-width: 0;
+    }
+
+    .app-header-copy .intro {
+      margin: 0;
+      max-width: 880px;
+    }
+
+    .app-header-actions {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .app {
+      width: min(100%, 1700px);
+      height: calc(100vh - 40px - 76px);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(300px, 340px) minmax(560px, 1fr) minmax(340px, 380px);
+      gap: 18px;
+      overflow: hidden;
+    }
+
+    .preview-shell {
+      align-self: stretch;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      --preview-frame-width: 450px;
+    }
+
+    .preview-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: min(100%, var(--preview-frame-width));
+      padding: 0 4px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .canvas-frame {
+      position: relative;
+      width: min(100%, var(--preview-frame-width));
+      max-width: 100%;
+      border-radius: 28px;
+      overflow: hidden;
+      background: #141a22;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 26px 70px rgba(0, 0, 0, 0.42);
+      aspect-ratio: 1080 / 1920;
+      margin: 0 auto;
+      flex: 0 0 auto;
+    }
+
+    .preview-shell.preview--portrait {
+      --preview-frame-width: 450px;
+    }
+
+    .preview-shell.preview--square {
+      --preview-frame-width: 720px;
+    }
+
+    .preview-shell.preview--landscape {
+      --preview-frame-width: 980px;
+    }
+
+    .layer-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #photoCanvas {
+      z-index: 1;
+    }
+
+    #route3DCanvas {
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #uiCanvas {
+      z-index: 3;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      cursor: default;
+    }
+
+    .controls {
+      align-self: stretch;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+      padding: 16px;
+      padding-right: 8px;
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      box-shadow: 0 22px 52px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(14px);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+
+    .controls em {
+      font-style: normal;
+      font-family: "Montserrat", "Segoe UI", Arial, sans-serif;
+      opacity: 0.85;
+    }
+
+    .controls-left {
+      grid-column: 1;
+    }
+
+    .controls-right {
+      grid-column: 3;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 1.06rem;
+    }
+
+    .intro {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .section {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .accordion-panel {
+      margin-top: 10px;
+    }
+
+    .accordion-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      min-height: 42px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      font-size: 0.96rem;
+      font-weight: 700;
+      text-align: left;
+    }
+
+    .accordion-toggle:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .accordion-arrow {
+      width: 14px;
+      flex: 0 0 14px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .accordion-content {
+      padding-top: 10px;
+      transition: opacity 0.15s ease;
+    }
+
+    .accordion-panel.collapsed .accordion-content {
+      display: none;
+    }
+
+    .support-panel {
+      margin-top: 14px;
+      border: 1px solid rgba(255, 155, 74, 0.22);
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(24, 29, 38, 0.96), rgba(13, 17, 24, 0.96));
+      box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+    }
+
+    .support-panel__toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 0;
+      border-radius: 0;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .support-panel__arrow {
+      color: var(--accent);
+      font-size: 12px;
+    }
+
+    .support-panel__content {
+      padding: 12px 2px 14px;
+      max-height: none;
+      overflow: visible;
+    }
+
+    .support-panel__intro {
+      margin: 0 10px 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .support-panel__qr-grid {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 24px;
+      width: 100%;
+    }
+
+    .support-panel__qr-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .support-panel__qr-title {
+      margin: 0 0 8px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .support-panel__qr-image-wrap {
+      width: min(240px, calc(100% - 12px));
+      margin: 0 auto;
+      padding: 10px;
+      box-sizing: border-box;
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .support-panel__qr-image {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      object-fit: contain;
+      opacity: 1;
+      filter: none;
+      transform: none;
+    }
+
+    .support-panel__qr-error {
+      min-height: 96px;
+      display: grid;
+      place-items: center;
+      color: #8a2b1f;
+      font-size: 12px;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .support-panel__qr-error[hidden] {
+      display: none !important;
+    }
+
+    .support-panel__caption {
+      margin: 8px 0 0;
+      color: rgba(244, 247, 250, 0.72);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .section:first-of-type {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .section h2 {
+      margin: 0 0 10px;
+      font-size: 0.92rem;
+    }
+
+    .section-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 0 0 10px;
+    }
+
+    .section-title-row h2 {
+      margin: 0;
+    }
+
+    .feature-progress-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 179, 106, 0.28);
+      background: rgba(255, 138, 61, 0.08);
+      color: rgba(255, 203, 138, 0.92);
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .section-note {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .restore-cache-note {
+      margin: 10px 0 12px;
+      padding: 12px 13px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 179, 106, 0.22);
+      background: rgba(255, 138, 61, 0.08);
+    }
+
+    .restore-cache-note[hidden] {
+      display: none;
+    }
+
+    .restore-cache-title {
+      margin: 0 0 8px;
+      color: rgba(255, 241, 226, 0.96);
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+
+    .restore-cache-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 5px;
+      color: rgba(236, 242, 247, 0.88);
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .restore-cache-list strong {
+      color: rgba(255, 244, 231, 0.98);
+      font-weight: 700;
+    }
+
+    .restore-cache-subnote {
+      margin: 9px 0 0;
+      color: rgba(255, 225, 198, 0.8);
+      font-size: 0.75rem;
+      line-height: 1.45;
+    }
+
+    .control {
+      margin-bottom: 12px;
+    }
+
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+      font-size: 0.86rem;
+    }
+
+    .control input[type="range"],
+    .control input[type="file"],
+    .control input[type="text"] {
+      width: 100%;
+    }
+
+    .control input[type="text"],
+    .control input[type="file"] {
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    .button-row,
+    .preset-row,
+    .chip-row {
+      display: grid;
+      gap: 8px;
+    }
+
+    .button-row,
+    .preset-row {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .chip-row {
+      grid-template-columns: repeat(2, 1fr);
+      margin-bottom: 12px;
+    }
+
+    button,
+    .chip,
+    .preset-btn,
+    .ghost {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      font: inherit;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    button:hover,
+    .chip:hover,
+    .preset-btn:hover,
+    .ghost:hover {
+      border-color: rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    button.active,
+    .chip.active,
+    .preset-btn.active,
+    .ghost.active {
+      border-color: rgba(255, 169, 106, 0.5);
+      background: rgba(255, 138, 61, 0.16);
+      color: #fff4e7;
+      box-shadow: inset 0 0 0 1px rgba(255, 169, 106, 0.16);
+    }
+
+    .layout-template-grid {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .layout-template-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      text-align: left;
+      min-height: 88px;
+    }
+
+    .layout-template-btn strong {
+      font-size: 0.95rem;
+      color: #fff5e8;
+      letter-spacing: 0.02em;
+    }
+
+    .layout-template-btn span {
+      font-size: 0.78rem;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+
+    .layout-template-btn.active span {
+      color: #ffd7b4;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.83rem;
+    }
+
+    .checkbox-item input {
+      width: auto;
+      margin: 0;
+    }
+
+    .checkbox-grid,
+    .field-grid,
+    .color-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .checkbox-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .field-grid,
+    .color-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    details {
+      margin-top: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    summary {
+      cursor: pointer;
+      padding: 10px 12px;
+      color: var(--text);
+      font-size: 0.84rem;
+    }
+
+    .details-inner {
+      padding: 0 12px 12px;
+    }
+
+    .selected-badge {
+      color: #fff4e7;
+      font-weight: 600;
+    }
+
+    .footer-actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+    }
+
+    #exportBtn {
+      width: 100%;
+      background: linear-gradient(135deg, rgba(255, 138, 61, 0.24), rgba(255, 188, 132, 0.16));
+      border-color: rgba(255, 169, 106, 0.38);
+    }
+
+    .status {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.45;
+    }
+
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 2px 6px;
+    }
+
+    .next-page-link {
+      width: auto;
+      flex: 0 0 auto;
+      min-height: 46px;
+      padding: 0 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 140, 60, 0.45);
+      background: rgba(255, 255, 255, 0.04);
+      color: rgba(255, 235, 210, 0.95);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .next-page-link:hover {
+      background: rgba(255, 160, 86, 0.08);
+      border-color: rgba(255, 178, 102, 0.7);
+      transform: translateY(-1px);
+    }
+
+    .mobile-preview-handle {
+      display: none;
+    }
+    @media (max-width: 1080px) {
+      html,
+      body {
+        overflow: auto;
+      }
+
+      body {
+        padding: 12px;
+        grid-template-rows: auto auto;
+      }
+
+      .app-header,
+      .app {
+        width: 100%;
+      }
+
+      .app {
+        height: auto;
+        grid-template-columns: 1fr;
+      }
+
+      .preview-shell {
+        position: static;
+        min-height: unset;
+        --preview-frame-width: min(100%, 980px);
+      }
+
+      .controls {
+        min-height: unset;
+        overflow: visible;
+      }
+
+      .app-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .app-header-actions {
+        justify-content: stretch;
+      }
+    }
+    @media (max-width: 767px) {
+      html,
+      body {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow-x: hidden;
+      }
+
+      body {
+        height: auto;
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding: 10px 10px calc(12px + env(safe-area-inset-bottom));
+        gap: 10px;
+      }
+
+      .app-header {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      .app-header-copy {
+        min-width: 0;
+      }
+
+      .app-header-copy h1 {
+        font-size: 1rem;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+
+      .app-header-copy .intro {
+        display: none;
+      }
+
+      .app-header-actions {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .next-page-link {
+        width: 100%;
+        min-height: 44px;
+        box-sizing: border-box;
+        text-align: center;
+        justify-content: center;
+        white-space: normal;
+      }
+
+      .app {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        height: auto;
+        overflow: visible;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+      }
+
+      .preview-shell {
+        grid-column: 1;
+        grid-row: 1;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        align-self: start;
+        gap: 8px;
+        --mobile-preview-frame-width: 100%;
+      }
+
+      .controls-left {
+        grid-column: 1;
+        grid-row: 2;
+      }
+
+      .controls-right {
+        grid-column: 1;
+        grid-row: 3;
+      }
+
+      .canvas-frame {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        margin-left: auto;
+        margin-right: auto;
+        border-radius: 18px;
+      }
+
+      .preview-meta {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        gap: 6px;
+        font-size: 12px;
+        flex-wrap: wrap;
+      }
+
+      .preview-meta > * {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .controls {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow: visible;
+        padding: 12px;
+        border-radius: 18px;
+        box-sizing: border-box;
+      }
+
+      .control,
+      .section,
+      .field-grid,
+      .button-row,
+      .preset-row,
+      .chip-row,
+      .color-grid,
+      .checkbox-grid,
+      label,
+      input,
+      select,
+      textarea {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+
+      input[type="file"],
+      input[type="text"],
+      input[type="number"],
+      input[type="range"],
+      select,
+      textarea {
+        width: 100%;
+      }
+
+      button,
+      .accordion-toggle {
+        min-height: 44px;
+      }
+
+      .button-row,
+      .preset-row,
+      .chip-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .field-grid,
+      .color-grid,
+      .checkbox-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .preview-shell {
+        position: sticky;
+        top: 0;
+        top: env(safe-area-inset-top);
+        z-index: 40;
+        overflow: visible;
+        box-sizing: border-box;
+        padding: 8px 8px 4px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        background: rgba(13, 17, 23, 0.96);
+        box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+
+      .canvas-frame {
+        width: var(--mobile-preview-frame-width, 100%) !important;
+        aspect-ratio: 1080 / 1920;
+        overflow: hidden;
+        transition: width 190ms ease;
+      }
+
+      .preview-shell.mobile-preview-is-dragging .canvas-frame {
+        transition: none;
+      }
+
+      .mobile-preview-handle {
+        display: flex;
+        width: 100%;
+        min-height: 44px;
+        border: 0;
+        background: transparent;
+        align-items: center;
+        justify-content: center;
+        cursor: ns-resize;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        padding: 6px 0 2px;
+        box-shadow: none;
+        appearance: none;
+        -webkit-appearance: none;
+      }
+
+      .mobile-preview-handle:focus-visible {
+        outline: 2px solid rgba(255, 179, 106, 0.85);
+        outline-offset: 2px;
+      }
+
+      .mobile-preview-handle > span {
+        width: 36px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(216, 225, 235, 0.42);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .canvas-frame {
+          transition: none;
+        }
+      }
+    }
+    .release-copyright {
+      margin: 14px auto 0;
+      padding: 8px 6px 0;
+      color: rgba(216, 225, 235, 0.52);
+      font-size: 11px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-copy">
+      <h1>骑行照片路线贴图生成器 V1</h1>
+      <p class="intro">照片是主体，路线和数据是两个可编辑贴纸层。路线层使用实时 3D 渲染，数据 HUD 作为独立贴纸层叠加到照片上。</p>
+    </div>
+    <div class="app-header-actions">
+      <a id="nextPageLink" class="next-page-link" href="./animated_route_v1_three_generate_dev.html">下一页：动态路线素材制作 →</a>
+    </div>
+  </header>
+
+  <main class="app">
+    <aside class="controls controls-left" aria-label="流程与导出">
+      <div class="accordion-panel" data-panel="upload">
+        <button type="button" class="accordion-toggle" data-panel-toggle="upload">
+          <span class="accordion-arrow">▼</span><span>上传素材</span>
+        </button>
+        <div class="accordion-content">
+          <section class="section">
+            <h2>上传素材</h2>
+            <div class="control">
+              <label for="photoInput"><span>骑行照片</span></label>
+              <input id="photoInput" type="file" accept="image/*">
+            </div>
+            <div class="control">
+              <label for="gpxInput"><span>GPX 文件</span></label>
+              <input id="gpxInput" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml">
+            </div>
+            <p class="section-note">请上传 GPX 文件生成路线和骑行数据</p>
+            <div id="restoreCacheNotice" class="restore-cache-note" hidden>
+              <p class="restore-cache-title">已从临时缓存恢复</p>
+              <ul id="restoreCacheList" class="restore-cache-list"></ul>
+              <p class="restore-cache-subnote">已恢复上次编辑状态；如需替换照片或 GPX，请重新选择文件。</p>
+            </div>
+            <p id="canvasRatioHint" class="section-note" hidden>褰撳墠鐢诲箙涓庡師鍥炬瘮渚嬪樊寮傝緝澶э紝鐓х墖浼氫繚鎸佹瘮渚嬪苟瑁佸垏閮ㄥ垎鍐呭锛屼笉浼氭媺浼哥粨鍙樸€?/p>
+          </section>
+        </div>
+      </div>
+
+      <div class="accordion-panel" data-panel="canvasRatio">
+        <button type="button" class="accordion-toggle" data-panel-toggle="canvasRatio">
+          <span class="accordion-arrow">▼</span><span>画幅比例</span>
+        </button>
+        <div class="accordion-content">
+          <section class="section">
+            <h2>画幅比例 Canvas Ratio</h2>
+            <p class="section-note">切换预览和导出画幅，照片默认按 cover 填满画布，并套用对应默认布局。</p>
+            <div class="chip-row">
+              <button id="canvasPreset9x16" type="button" class="chip active">9:16 竖版</button>
+              <button id="canvasPreset4x5" type="button" class="chip">4:5 信息流</button>
+              <button id="canvasPreset3x4" type="button" class="chip">3:4 照片</button>
+              <button id="canvasPreset1x1" type="button" class="chip">1:1 方图</button>
+              <button id="canvasPreset4x3" type="button" class="chip">4:3 横图</button>
+              <button id="canvasPreset16x9" type="button" class="chip">16:9 横版</button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div class="accordion-panel" data-panel="editMode">
+        <button type="button" class="accordion-toggle" data-panel-toggle="editMode">
+          <span class="accordion-arrow">▼</span><span>编辑模式</span>
+        </button>
+        <div class="accordion-content">
+          <section class="section">
+            <h2>编辑模式</h2>
+            <p class="section-note">自由布局模式下，可直接点击并拖动路线、数据 HUD、个性签名和路线标注；调整三维模式用于修改路线的倾斜、旋转和高度。</p>
+            <div class="button-row">
+              <button id="modeFreeLayout" type="button" class="ghost active">自由布局</button>
+              <button id="modeAdjustRoute3D" type="button" class="ghost">调整三维</button>
+            </div>
+            <p class="section-note">当前选中：<span id="selectedLayerBadge" class="selected-badge">无</span></p>
+          </section>
+        </div>
+      </div>
+
+      <div class="accordion-panel" data-panel="layoutTemplates">
+        <button type="button" class="accordion-toggle" data-panel-toggle="layoutTemplates">
+          <span class="accordion-arrow">▼</span><span>排版模板</span>
+        </button>
+        <div class="accordion-content">
+          <section class="section">
+            <h2>排版模板</h2>
+            <p class="section-note">模板只是一键推荐布局。应用后，你仍然可以继续自由拖动路线、HUD 和个性签名。</p>
+            <div class="layout-template-grid">
+              <button id="layoutTemplateDataCard" type="button" class="preset-btn layout-template-btn active">
+                <strong>数据签海报</strong>
+                <span>数据清楚，路线作为视觉补充，适合正式海报。</span>
+              </button>
+              <button id="layoutTemplateRouteHero" type="button" class="preset-btn layout-template-btn">
+                <strong>路线主视觉</strong>
+                <span>路线更大更突出，HUD 更克制，适合路线素材展示。</span>
+              </button>
+              <button id="layoutTemplateMinimalStrip" type="button" class="preset-btn layout-template-btn">
+                <strong>极简信息条</strong>
+                <span>数据压缩成轻量信息条，画面更干净，适合照片氛围优先。</span>
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div class="accordion-panel" data-panel="export">
+        <button type="button" class="accordion-toggle" data-panel-toggle="export">
+          <span class="accordion-arrow">▼</span><span>导出</span>
+        </button>
+        <div class="accordion-content">
+          <div class="footer-actions">
+            <button id="exportBtn" type="button">导出照片</button>
+          </div>
+          <p class="section-note">Build: 20260708_visual_spec_bridge_dev</p>
+          <div id="statusMessage" class="status">请先上传照片，再上传 GPX 文件生成路线贴图和数据 HUD。</div>
+        </div>
+      </div>
+      <section class="support-panel" data-support-panel>
+        <button class="support-panel__toggle" type="button" data-support-toggle aria-expanded="true">
+          <span>关注与支持</span>
+          <span class="support-panel__arrow" aria-hidden="true">▼</span>
+        </button>
+        <div class="support-panel__content" data-support-content>
+          <p class="support-panel__intro">关注工具动态，也可以支持工具继续开发。</p>
+          <div class="support-panel__qr-grid">
+            <div class="support-panel__qr-item">
+              <h3 class="support-panel__qr-title">抖音关注</h3>
+              <div class="support-panel__qr-image-wrap">
+                <img class="support-panel__qr-image" src="./assets/qr/douyin-follow.png" alt="抖音关注二维码" data-support-qr="douyin" draggable="false">
+              </div>
+              <div class="support-panel__qr-error" data-support-qr-error="douyin" hidden>二维码加载失败，请刷新页面。</div>
+              <p class="support-panel__caption">关注获取工具更新</p>
+            </div>
+            <div class="support-panel__qr-item">
+              <h3 class="support-panel__qr-title">微信赞赏</h3>
+              <div class="support-panel__qr-image-wrap">
+                <img class="support-panel__qr-image" src="./assets/qr/wechat-support.png" alt="微信收款二维码" data-support-qr="wechat" draggable="false">
+              </div>
+              <div class="support-panel__qr-error" data-support-qr-error="wechat" hidden>二维码加载失败，请刷新页面。</div>
+              <p class="support-panel__caption">各位老爷美女的赞赏，是我开发工具的动力。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <section class="preview-shell">
+      <div class="preview-meta">
+        <span id="previewCanvasMeta">预览画布 · 1080 × 1920</span>
+        <span id="selectedLayerText">当前选中：无</span>
+      </div>
+      <div id="previewCanvasFrame" class="canvas-frame">
+        <canvas id="photoCanvas" class="layer-canvas" width="1080" height="1920"></canvas>
+        <canvas id="route3DCanvas" class="layer-canvas" width="1080" height="1920"></canvas>
+        <canvas id="uiCanvas" class="layer-canvas" width="1080" height="1920"></canvas>
+      </div>
+      <button
+        id="mobilePreviewHandle"
+        class="mobile-preview-handle"
+        type="button"
+        aria-controls="previewCanvasFrame"
+        aria-expanded="false"
+        aria-label="展开完整预览"
+      >
+        <span class="mobile-preview-handle__bar" aria-hidden="true"></span>
+      </button>
+    </section>
+
+    <aside class="controls controls-right" aria-label="样式与高级设置">
+      <div class="accordion-panel" data-panel="routeLayout">
+        <button type="button" class="accordion-toggle" data-panel-toggle="routeLayout">
+          <span class="accordion-arrow">▼</span><span>路线布局</span>
+        </button>
+        <div class="accordion-content">
+          <section class="section">
+            <h2>路线布置</h2>
+            <div class="control">
+              <label for="routeScale"><span>路线大小</span><strong id="routeScaleValue"></strong></label>
+              <input id="routeScale" type="range" min="30" max="180" value="100">
+            </div>
+            <div class="control">
+              <label for="routeOpacity"><span>路线透明度</span><strong id="routeOpacityValue"></strong></label>
+              <input id="routeOpacity" type="range" min="20" max="100" value="98">
+            </div>
+            <div class="control">
+              <label for="routeRotation"><span>贴图旋转</span><strong id="routeRotationValue"></strong></label>
+              <input id="routeRotation" type="range" min="-20" max="20" value="0">
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div class="accordion-panel collapsed" data-panel="route3D">
+        <button type="button" class="accordion-toggle" data-panel-toggle="route3D">
+          <span class="accordion-arrow">▶</span><span>三维路线</span>
+        </button>
+        <div class="accordion-content">
+          <section class="section">
+            <h2>三维路线</h2>
+            <div class="control">
+              <label for="tiltInput"><span>前后俯仰 Tilt</span><strong id="tiltValue"></strong></label>
+              <input id="tiltInput" type="range" min="-88" max="-35" value="-68">
+            </div>
+            <div class="control">
+              <label for="turnInput"><span>左右转向 Turn</span><strong id="turnValue"></strong></label>
+              <input id="turnInput" type="range" min="-35" max="35" value="12">
+            </div>
+            <div class="control">
+              <label for="heightInput"><span>高度 Height</span><strong id="heightValue"></strong></label>
+              <input id="heightInput" type="range" min="160" max="360" value="280">
+            </div>
+            <label class="checkbox-item">
+              <input id="enableRouteGlow" type="checkbox" checked>
+              <span>启用路线发光 <em>Route Glow</em></span>
+            </label>
+            <div class="control">
+              <label for="routeGlowStrength">
+                <span>路线发光强度 <em>Glow Strength</em></span>
+                <strong id="routeGlowStrengthValue">50%</strong>
+              </label>
+              <input id="routeGlowStrength" type="range" min="0" max="100" step="1" value="50">
+            </div>
+            <div class="control">
+              <label for="routeGlowSpread">
+                <span>路线发光范围 <em>Glow Spread</em></span>
+                <strong id="routeGlowSpreadValue">45%</strong>
+              </label>
+              <input id="routeGlowSpread" type="range" min="0" max="100" step="1" value="45">
+            </div>
+            <details>
+              <summary>高级设置</summary>
+              <div class="details-inner">
+                <div class="control">
+                  <label for="rollInput"><span>Roll</span><strong id="rollValue"></strong></label>
+                  <input id="rollInput" type="range" min="-30" max="30" value="0">
+                </div>
+              </div>
+            </details>
+          </section>
+        </div>
+      </div>
+
+      <div class="accordion-panel collapsed" data-panel="callouts">
+        <button type="button" class="accordion-toggle" data-panel-toggle="callouts">
+          <span class="accordion-arrow">▶</span><span>路线标注 Callouts</span>
+        </button>
+        <div class="accordion-content">
+          <section class="section">
+            <h2>路线标注 Callouts</h2>
+            <p class="section-note">按需在路线图上显示关键数据标注，默认关闭以保持画面简洁。</p>
+            <div class="checkbox-grid">
+              <label class="checkbox-item"><input id="calloutMaxElevation" type="checkbox">最高海拔</label>
+              <label class="checkbox-item"><input id="calloutMaxGrade" type="checkbox">最陡坡度</label>
+              <label class="checkbox-item"><input id="calloutMaxSpeed" type="checkbox">最大速度</label>
+            </div>
+            <div class="control">
+              <label for="calloutSize"><span>标注大小 Callout Size</span><strong id="calloutSizeValue"></strong></label>
+              <input id="calloutSize" type="range" min="80" max="180" value="130">
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div class="accordion-panel collapsed" data-panel="hud">
+        <button type="button" class="accordion-toggle" data-panel-toggle="hud">
+          <span class="accordion-arrow">▶</span><span>数据 HUD</span>
+        </button>
+        <div class="accordion-content">
+          <section class="section">
+            <h2>数据 HUD</h2>
+            <p class="section-note">默认显示距离、累计爬升、运动时间、最高海拔、平均速度、平均坡度。你可以继续勾选更多扩展字段，系统会根据数量自动切换为紧凑布局或规整网格布局。</p>
+            <div class="checkbox-grid">
+              <label class="checkbox-item"><input type="checkbox" data-field="distance" checked disabled>距离</label>
+              <label class="checkbox-item"><input type="checkbox" data-field="elevationGain" checked disabled>累计爬升</label>
+              <label class="checkbox-item"><input type="checkbox" data-field="movingTime" checked disabled>运动时间</label>
+              <label class="checkbox-item" id="hudMaxElevationWrap"><input id="hudMaxElevation" data-field="maxElevation" type="checkbox">最高海拔</label>
+              <label class="checkbox-item" id="hudAvgGradeWrap"><input id="hudAvgGrade" data-field="avgGrade" type="checkbox">平均坡度</label>
+              <label class="checkbox-item" id="hudAvgSpeedWrap"><input id="hudAvgSpeed" data-field="avgSpeed" type="checkbox">平均速度</label>
+              <label class="checkbox-item" id="hudMaxSpeedWrap"><input id="hudMaxSpeed" data-field="maxSpeed" type="checkbox">最高速度</label>
+              <label class="checkbox-item" id="hudAvgHeartRateWrap"><input id="hudAvgHeartRate" data-field="avgHeartRate" type="checkbox">平均心率</label>
+              <label class="checkbox-item" id="hudMaxHeartRateWrap"><input id="hudMaxHeartRate" data-field="maxHeartRate" type="checkbox">最大心率</label>
+              <label class="checkbox-item" id="hudAvgCadenceWrap"><input id="hudAvgCadence" data-field="avgCadence" type="checkbox">平均踏频</label>
+              <label class="checkbox-item" id="hudCaloriesWrap"><input id="hudCalories" data-field="calories" type="checkbox">卡路里</label>
+              <label class="checkbox-item" id="hudElevationLossWrap"><input id="hudElevationLoss" data-field="elevationLoss" type="checkbox">海拔下降</label>
+              <label class="checkbox-item" id="hudMovingTimeWrap"><input id="hudMovingTime" data-field="movingTime" type="checkbox">移动时间</label>
+              <label class="checkbox-item" id="hudStoppedTimeWrap"><input id="hudStoppedTime" data-field="stoppedTime" type="checkbox">停留时间</label>
+              <label class="checkbox-item" id="hudDateWrap"><input id="hudDate" data-field="date" type="checkbox">日期</label>
+              <label class="checkbox-item" id="hudRouteNameWrap"><input id="hudRouteName" data-field="routeName" type="checkbox">路线名</label>
+              <label class="checkbox-item" id="hudLocationWrap"><input id="hudLocation" data-field="location" type="checkbox">地点</label>
+              <label class="checkbox-item" id="hudStartPointWrap"><input id="hudStartPoint" data-field="startPoint" type="checkbox">起点</label>
+              <label class="checkbox-item" id="hudEndPointWrap"><input id="hudEndPoint" data-field="endPoint" type="checkbox">终点</label>
+            </div>
+            <p id="hudSelectionHint" class="section-note">基础字段 3 项，扩展字段 3 项，实际显示 6 项，预览将自动切换为紧凑布局。</p>
+            <div class="field-grid">
+              <div class="control">
+                <label for="routeNameInput"><span>路线名</span></label>
+                <input id="routeNameInput" type="text" placeholder="例如：G318">
+              </div>
+              <div class="control">
+                <label for="locationInput"><span>地点</span></label>
+                <input id="locationInput" type="text" placeholder="例如：川藏线 / 姊妹湖">
+              </div>
+              <div class="control">
+                <label for="dateInput"><span>日期</span></label>
+                <input id="dateInput" type="text" placeholder="例如：2026-05-23">
+              </div>
+              <div class="control">
+                <label for="startPointInput"><span>起点</span></label>
+                <input id="startPointInput" type="text" placeholder="例如：康定">
+              </div>
+              <div class="control">
+                <label for="endPointInput"><span>终点</span></label>
+                <input id="endPointInput" type="text" placeholder="例如：理塘">
+              </div>
+              <div class="control">
+                <label for="avgHeartRateInput"><span>平均心率</span></label>
+                <input id="avgHeartRateInput" type="text" placeholder="例如：148 bpm">
+              </div>
+              <div class="control">
+                <label for="maxHeartRateInput"><span>最大心率</span></label>
+                <input id="maxHeartRateInput" type="text" placeholder="例如：176 bpm">
+              </div>
+              <div class="control">
+                <label for="avgCadenceInput"><span>平均踏频</span></label>
+                <input id="avgCadenceInput" type="text" placeholder="例如：78 rpm">
+              </div>
+              <div class="control">
+                <label for="caloriesInput"><span>卡路里</span></label>
+                <input id="caloriesInput" type="text" placeholder="例如：1540 kcal">
+              </div>
+              <div class="control">
+                <label for="elevationLossInput"><span>海拔下降</span></label>
+                <input id="elevationLossInput" type="text" placeholder="例如：280 m">
+              </div>
+              <div class="control">
+                <label for="movingTimeInput"><span>运动时间</span></label>
+                <input id="movingTimeInput" type="text" placeholder="例如：2 h 54 m">
+              </div>
+              <div class="control">
+                <label for="stoppedTimeInput"><span>停留时间</span></label>
+                <input id="stoppedTimeInput" type="text" placeholder="例如：7 m 35 s">
+              </div>
+            </div>
+            <div class="control">
+              <label for="hudScale"><span>HUD 大小</span><strong id="hudScaleValue"></strong></label>
+              <input id="hudScale" type="range" min="60" max="280" value="100" step="1">
+            </div>
+            <div class="control">
+              <label for="hudOpacity"><span>HUD 透明度</span><strong id="hudOpacityValue"></strong></label>
+              <input id="hudOpacity" type="range" min="20" max="100" value="100">
+            </div>
+            <div class="control">
+              <label for="hudBackgroundOpacity"><span>HUD 背景透明度</span><strong id="hudBackgroundOpacityValue"></strong></label>
+              <input id="hudBackgroundOpacity" type="range" min="0" max="40" value="14" step="1">
+            </div>
+            <div class="control">
+              <label><span>数据小符号</span></label>
+              <div class="chip-row">
+                <button id="hudMetricIconNone" type="button" class="chip active">不显示</button>
+                <button id="hudMetricIconLine" type="button" class="chip">线性图标</button>
+                <button id="hudMetricIconDot" type="button" class="chip">小圆点</button>
+              </div>
+            </div>
+          </section>
+          <section class="section">
+            <div class="section-title-row">
+              <h2>个性签名</h2>
+              <span class="feature-progress-badge">持续优化中</span>
+            </div>
+            <p class="section-note">添加一句简短文字作为画面补充。签名样式将持续优化更新。</p>
+            <label class="checkbox-item">
+              <input id="signatureEnabled" type="checkbox">
+              <span>启用个性签名</span>
+            </label>
+            <div class="control">
+              <label for="signatureTextInput"><span>签名文案</span></label>
+              <input id="signatureTextInput" type="text" maxlength="24" placeholder="例如：把青春留在风里">
+            </div>
+            <div class="control">
+              <label><span>签名字体</span></label>
+              <div class="chip-row">
+                <button id="signatureFontStyleHandwritten" type="button" class="chip active">手写纪念</button>
+                <button id="signatureFontStyleCinematic" type="button" class="chip">克制电影</button>
+                <button id="signatureFontStyleSport" type="button" class="chip">运动标签</button>
+                <button id="signatureFontStyleLiterary" type="button" class="chip">轻文艺</button>
+              </div>
+            </div>
+            <p class="section-note">在“自由布局”模式下，可直接拖动签名位置。</p>
+            <div class="control">
+              <label for="signatureFontSize"><span>签名字号</span><strong id="signatureFontSizeValue"></strong></label>
+              <input id="signatureFontSize" type="range" min="16" max="42" value="24" step="1">
+            </div>
+            <div class="control">
+              <label for="signatureOpacity"><span>签名透明度</span><strong id="signatureOpacityValue"></strong></label>
+              <input id="signatureOpacity" type="range" min="0" max="100" value="85" step="1">
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div class="accordion-panel collapsed" data-panel="colors">
+        <button type="button" class="accordion-toggle" data-panel-toggle="colors">
+          <span class="accordion-arrow">▶</span><span>颜色设置</span>
+        </button>
+        <div class="accordion-content">
+          <section class="section">
+            <h2>颜色预设</h2>
+            <div class="preset-row">
+              <button id="colorPresetOrangeGold" type="button" class="preset-btn active">橙金</button>
+              <button id="colorPresetIceBlue" type="button" class="preset-btn">冰蓝</button>
+              <button id="colorPresetNeonCyan" type="button" class="preset-btn">荧光青</button>
+              <button id="colorPresetWhiteOrange" type="button" class="preset-btn">白橙</button>
+              <button id="colorPresetWhiteBlue" type="button" class="preset-btn">白蓝</button>
+              <button id="colorPresetBlackGold" type="button" class="preset-btn">黑金</button>
+              <button id="colorPresetRedOrange" type="button" class="preset-btn">红橙</button>
+              <button id="colorPresetPurplePink" type="button" class="preset-btn">紫粉</button>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2>路线颜色</h2>
+            <div class="color-grid">
+              <div class="control">
+                <label for="routeMainColor"><span>主线颜色</span></label>
+                <input id="routeMainColor" type="color" value="#ffa96a">
+              </div>
+              <div class="control">
+                <label for="routeGlowColor"><span>发光颜色</span></label>
+                <input id="routeGlowColor" type="color" value="#ff8a3d">
+              </div>
+              <div class="control">
+                <label for="routeWallColor"><span>高程墙颜色</span></label>
+                <input id="routeWallColor" type="color" value="#ff8c3a">
+              </div>
+              <div class="control">
+                <label for="routeCurtainColor"><span>垂直线颜色</span></label>
+                <input id="routeCurtainColor" type="color" value="#ffbf7c">
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2>路线标注颜色</h2>
+            <div class="color-grid">
+              <div class="control">
+                <label for="calloutTextColor"><span>标注文字颜色</span></label>
+                <input id="calloutTextColor" type="color" value="#ffffff">
+              </div>
+              <div class="control">
+                <label for="calloutLineColor"><span>标注引线颜色</span></label>
+                <input id="calloutLineColor" type="color" value="#ffffff">
+              </div>
+              <div class="control">
+                <label for="calloutDotColor"><span>标注圆点颜色</span></label>
+                <input id="calloutDotColor" type="color" value="#ffffff">
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2>HUD 颜色</h2>
+            <div class="color-grid">
+              <div class="control">
+                <label for="hudPrimaryColor"><span>主数字颜色</span></label>
+                <input id="hudPrimaryColor" type="color" value="#ffffff">
+              </div>
+              <div class="control">
+                <label for="hudSecondaryColor"><span>次级文字颜色</span></label>
+                <input id="hudSecondaryColor" type="color" value="#f3f6fa">
+              </div>
+              <div class="control">
+                <label for="hudLabelColor"><span>标签颜色</span></label>
+                <input id="hudLabelColor" type="color" value="#ffbc84">
+              </div>
+              <div class="control">
+                <label for="hudAccentColor"><span>强调色</span></label>
+                <input id="hudAccentColor" type="color" value="#ffd6ab">
+              </div>
+            </div>
+            <div class="control">
+              <label for="hudShadowStrength"><span>HUD 文字投影强度</span><strong id="hudShadowStrengthValue"></strong></label>
+              <input id="hudShadowStrength" type="range" min="0" max="100" value="38">
+            </div>
+          </section>
+
+          <section class="section">
+            <h2>签名颜色</h2>
+            <div class="color-grid">
+              <div class="control">
+                <label for="signatureColorInput"><span>签名颜色</span></label>
+                <input id="signatureColorInput" type="color" value="#F4E2C3">
+              </div>
+              <div class="control">
+                <label for="signatureShadowStrength"><span>签名投影强度</span><strong id="signatureShadowStrengthValue"></strong></label>
+                <input id="signatureShadowStrength" type="range" min="0" max="100" value="30" step="1">
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <div class="mobile-ui-reserve" hidden aria-hidden="true">
+    <nav class="mobile-primary-bar-slot" aria-label="移动端主操作栏预留"></nav>
+    <section class="mobile-parameter-drawer-slot" aria-label="移动端参数抽屉预留"></section>
+  </div>
+  <footer class="release-copyright">© 2026 老崔 · 骑行照片路线贴图生成器 · 未经授权，禁止复制、改名发布或用于商业服务。</footer>
+
+
+
+  <script src="./vendor-three.min.js"></script>
+  <script src="./route-data.80f89b2d.min.js?v=20260714_rc12_mobile_protected"></script>
+  <script src="./hud-core.18fcf5e1.min.js?v=20260714_rc12_mobile_protected"></script>
+  <script src="./route-renderer.db92cc0e.min.js?v=20260714_rc12_mobile_protected"></script>
+  <script src="./static-app.b6d9000c.min.js?v=20260714_rc12_mobile_protected"></script>
+  <script src="./mobile-ui.14ff75d7.min.js?v=20260714_rc12_mobile_protected"></script>
+</body>
+</html>
+
+
