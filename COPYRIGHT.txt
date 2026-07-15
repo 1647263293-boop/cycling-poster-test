@@ -2,7 +2,7 @@
 骑行照片路线贴图生成器
 
 版本：
-RC1.2-mobile-protected
+RC1.2.1-mobile-protected
 
 版权所有：
 © 2026 老崔. All Rights Reserved.

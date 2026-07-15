@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="author" content="老崔">
   <meta name="copyright" content="© 2026 老崔">
-  <meta name="release-channel" content="RC1.2-mobile-protected">
+  <meta name="release-channel" content="RC1.2.1-mobile-protected">
   <meta name="release-protection" content="terser-minified-no-sourcemap">
 <meta name="mobile-shell-build" content="20260714_m01_static_mobile_layout_shell_v1">
   <meta name="mobile-preview-build" content="20260714_m02a_static_sticky_preview_v1">
@@ -977,15 +977,6 @@
         }
       }
     }
-    .release-copyright {
-      margin: 14px auto 0;
-      padding: 8px 6px 0;
-      color: rgba(216, 225, 235, 0.52);
-      font-size: 11px;
-      line-height: 1.5;
-      text-align: center;
-    }
-
   </style>
 </head>
 <body>
@@ -1153,7 +1144,7 @@
       </button>
     </section>
 
-    <aside class="controls controls-right" aria-label="样式与高级设置">
+    <aside class="controls controls-right" aria-label="样式控制">
       <div class="accordion-panel" data-panel="routeLayout">
         <button type="button" class="accordion-toggle" data-panel-toggle="routeLayout">
           <span class="accordion-arrow">▼</span><span>路线布局</span>
@@ -1169,7 +1160,7 @@
               <label for="routeOpacity"><span>路线透明度</span><strong id="routeOpacityValue"></strong></label>
               <input id="routeOpacity" type="range" min="20" max="100" value="98">
             </div>
-            <div class="control">
+            <div class="control compatibility-control-hidden" hidden>
               <label for="routeRotation"><span>贴图旋转</span><strong id="routeRotationValue"></strong></label>
               <input id="routeRotation" type="range" min="-20" max="20" value="0">
             </div>
@@ -1193,6 +1184,10 @@
               <input id="turnInput" type="range" min="-35" max="35" value="12">
             </div>
             <div class="control">
+              <label for="rollInput"><span>Roll</span><strong id="rollValue"></strong></label>
+              <input id="rollInput" type="range" min="-30" max="30" value="0">
+            </div>
+            <div class="control">
               <label for="heightInput"><span>高度 Height</span><strong id="heightValue"></strong></label>
               <input id="heightInput" type="range" min="160" max="360" value="280">
             </div>
@@ -1214,15 +1209,6 @@
               </label>
               <input id="routeGlowSpread" type="range" min="0" max="100" step="1" value="45">
             </div>
-            <details>
-              <summary>高级设置</summary>
-              <div class="details-inner">
-                <div class="control">
-                  <label for="rollInput"><span>Roll</span><strong id="rollValue"></strong></label>
-                  <input id="rollInput" type="range" min="-30" max="30" value="0">
-                </div>
-              </div>
-            </details>
           </section>
         </div>
       </div>
@@ -1492,17 +1478,16 @@
     <nav class="mobile-primary-bar-slot" aria-label="移动端主操作栏预留"></nav>
     <section class="mobile-parameter-drawer-slot" aria-label="移动端参数抽屉预留"></section>
   </div>
-  <footer class="release-copyright">© 2026 老崔 · 骑行照片路线贴图生成器 · 未经授权，禁止复制、改名发布或用于商业服务。</footer>
-
-
 
   <script src="./vendor-three.min.js"></script>
-  <script src="./route-data.80f89b2d.min.js?v=20260714_rc12_mobile_protected"></script>
-  <script src="./hud-core.18fcf5e1.min.js?v=20260714_rc12_mobile_protected"></script>
-  <script src="./route-renderer.db92cc0e.min.js?v=20260714_rc12_mobile_protected"></script>
-  <script src="./static-app.b6d9000c.min.js?v=20260714_rc12_mobile_protected"></script>
-  <script src="./mobile-ui.14ff75d7.min.js?v=20260714_rc12_mobile_protected"></script>
+  <script src="./route-data.80f89b2d.min.js"></script>
+  <script src="./hud-core.b3b6a9e9.min.js"></script>
+  <script src="./route-renderer.df83d973.min.js"></script>
+  <script src="./static-app.4d7bcac2.min.js"></script>
+  <script src="./mobile-ui.1d437718.min.js"></script>
 </body>
 </html>
+
+
 
 
